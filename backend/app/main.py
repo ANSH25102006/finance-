@@ -12,6 +12,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
+from app.routers import auth as auth_router
 
 settings = get_settings()
 
@@ -48,12 +49,8 @@ app.add_middleware(
 
 # ---------------------------------------------------------------------------
 # Routers
-# Register feature routers here as they are implemented.
-# Example:
-#   from app.routers import auth, transactions
-#   app.include_router(auth.router, prefix="/api/v1/auth", tags=["Auth"])
 # ---------------------------------------------------------------------------
-
+app.include_router(auth_router.router, prefix="/auth", tags=["Auth"])
 
 # ---------------------------------------------------------------------------
 # Root endpoints
