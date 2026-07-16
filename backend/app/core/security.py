@@ -12,21 +12,21 @@ from app.config import get_settings
 
 settings = get_settings()
 
-# ---------------------------------------------------------------------------
-# Password hashing — bcrypt via passlib
-# ---------------------------------------------------------------------------
-
-_pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
+import bcrypt
 
 def hash_password(plain_password: str) -> str:
     """Hash a plaintext password using bcrypt. Never store the plain version."""
-    return _pwd_context.hash(plain_password)
+    pwd_bytes = plain_password.encode('utf-8')
+    salt = bcrypt.gensalt()
+    hashed = bcrypt.hashpw(pwd_bytes, salt)
+    return hashed.decode('utf-8')
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Return True if the plaintext password matches the stored bcrypt hash."""
-    return _pwd_context.verify(plain_password, hashed_password)
+    pwd_bytes = plain_password.encode('utf-8')
+    hashed_bytes = hashed_password.encode('utf-8')
+    return bcrypt.checkpw(pwd_bytes, hashed_bytes)
 
 
 # ---------------------------------------------------------------------------

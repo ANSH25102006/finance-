@@ -16,6 +16,9 @@ import HomePage from '@/pages/HomePage'
 import LoginPage from '@/pages/LoginPage'
 import SignupPage from '@/pages/SignupPage'
 import DashboardPage from '@/pages/DashboardPage'
+import TransactionsPage from '@/pages/TransactionsPage'
+import AnalyticsPage from '@/pages/AnalyticsPage'
+import ImportStatement from '@/pages/ImportStatement'
 
 export default function App() {
   return (
@@ -36,6 +39,30 @@ export default function App() {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/transactions"
+            element={
+              <ProtectedRoute>
+                <TransactionsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/analytics"
+            element={
+              <ProtectedRoute>
+                <AnalyticsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/import"
+            element={
+              <ProtectedRoute>
+                <ImportStatement />
+              </ProtectedRoute>
+            }
+          />
 
           {/* Catch-all: redirect unknown paths to home */}
           <Route path="*" element={<Navigate to="/" replace />} />
@@ -44,3 +71,4 @@ export default function App() {
     </QueryClientProvider>
   )
 }
+

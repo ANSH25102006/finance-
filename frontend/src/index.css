@@ -1,50 +1,141 @@
 @import "tailwindcss";
 
-/* ============================================================
-   Global CSS — Personal Finance Spend Auditor
-   Tailwind v4 CSS-first configuration
-   ============================================================ */
-
-/* CSS Custom Properties — Design Tokens */
-:root {
-  --background: 0 0% 100%;
-  --foreground: 222.2 84% 4.9%;
-  --card: 0 0% 100%;
-  --card-foreground: 222.2 84% 4.9%;
-  --popover: 0 0% 100%;
-  --popover-foreground: 222.2 84% 4.9%;
-  --primary: 221.2 83.2% 53.3%;
-  --primary-foreground: 210 40% 98%;
-  --secondary: 210 40% 96.1%;
-  --secondary-foreground: 222.2 47.4% 11.2%;
-  --muted: 210 40% 96.1%;
-  --muted-foreground: 215.4 16.3% 46.9%;
-  --accent: 210 40% 96.1%;
-  --accent-foreground: 222.2 47.4% 11.2%;
-  --destructive: 0 84.2% 60.2%;
-  --destructive-foreground: 210 40% 98%;
-  --border: 214.3 31.8% 91.4%;
-  --input: 214.3 31.8% 91.4%;
-  --ring: 221.2 83.2% 53.3%;
-  --radius: 0.5rem;
+@theme {
+  --color-background: #060709;
+  --color-surface: #0c0e12;
+  --color-border-subtle: rgba(255, 255, 255, 0.03);
+  
+  --font-sans: "Inter", system-ui, sans-serif;
 }
 
-/* Base resets */
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
+@layer base {
+  :root {
+    --background: #060709;
+    --foreground: #ffffff;
+  }
+  
+  html, body {
+    @apply bg-[var(--background)] text-[var(--foreground)] antialiased font-sans;
+    font-feature-settings: "tnum" 1, "cv11" 1, "ss01" 1, "ss03" 1;
+    letter-spacing: -0.02em;
+    -webkit-font-smoothing: antialiased;
+  }
 }
 
-html {
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+@layer utilities {
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+  
+  .glass-panel {
+    @apply bg-white/[0.01] backdrop-blur-3xl;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 0 0 0 1px rgba(255,255,255,0.03), 0 8px 32px -8px rgba(0,0,0,0.9);
+  }
+
+  /* V5 Ultra-Premium Stripe Style Cards */
+  .os-card {
+    @apply bg-[#0b0c10] rounded-[20px] relative;
+    /* Multilayer hyper-realistic shadow + Glass Edge lighting */
+    box-shadow: 
+      inset 0 1px 0 rgba(255,255,255,0.06), 
+      inset 0 -1px 0 rgba(255,255,255,0.01),
+      inset 1px 0 0 rgba(255,255,255,0.02),
+      inset -1px 0 0 rgba(255,255,255,0.02),
+      0 0 0 1px rgba(0,0,0,0.8),
+      0 2px 4px rgba(0,0,0,0.4),
+      0 12px 24px -4px rgba(0,0,0,0.6),
+      0 24px 48px -12px rgba(0,0,0,0.8);
+  }
+
+  .os-card-hover {
+    @apply transition-all duration-500 hover:-translate-y-[1px];
+    box-shadow: 
+      inset 0 1px 0 rgba(255,255,255,0.08), 
+      inset 0 -1px 0 rgba(255,255,255,0.02),
+      inset 1px 0 0 rgba(255,255,255,0.03),
+      inset -1px 0 0 rgba(255,255,255,0.03),
+      0 0 0 1px rgba(0,0,0,1),
+      0 4px 8px rgba(0,0,0,0.5),
+      0 16px 32px -4px rgba(0,0,0,0.7),
+      0 32px 64px -12px rgba(0,0,0,1);
+  }
+
+  /* Bare Metal Panel (No card background, for Vercel style data) */
+  .os-bare-metal {
+    @apply relative overflow-hidden;
+    box-shadow: 0 1px 0 0 rgba(255,255,255,0.04);
+  }
+
+  /* Inner Panels for Bento Layout */
+  .os-inner-panel {
+    @apply bg-[#0e1015] rounded-[16px];
+    box-shadow: 
+      inset 0 1px 3px rgba(0,0,0,0.4), 
+      inset 0 0 0 1px rgba(255,255,255,0.02),
+      0 1px 0 rgba(255,255,255,0.02);
+  }
+
+  /* Micro-Typography System (Linear Style) */
+  .typo-display { @apply font-semibold tracking-[-0.04em] text-white; }
+  .typo-heading { @apply font-medium tracking-[-0.02em] text-white text-[13px]; }
+  .typo-subheading { @apply font-medium tracking-widest uppercase text-gray-500 text-[10px]; }
+  .typo-body { @apply font-medium text-gray-400 text-[12px] leading-relaxed tracking-[-0.01em]; }
+  .typo-caption { @apply font-medium text-gray-500 text-[11px] tracking-[-0.01em]; }
+  .typo-badge { @apply font-semibold uppercase tracking-widest text-[9px]; }
+
+  /* Text gradients */
+  .text-gradient-emerald { @apply bg-clip-text text-transparent bg-gradient-to-br from-emerald-300 to-emerald-600; }
+  .text-gradient-white { @apply bg-clip-text text-transparent bg-gradient-to-b from-white to-white/40; }
+
+  /* Hairlines */
+  .hairline-b { border-bottom: 1px solid rgba(255,255,255,0.04); }
+  .hairline-t { border-top: 1px solid rgba(255,255,255,0.04); }
+  .hairline-l { border-left: 1px solid rgba(255,255,255,0.04); }
+  .hairline-r { border-right: 1px solid rgba(255,255,255,0.04); }
 }
 
-body {
-  margin: 0;
-  background-color: hsl(var(--background));
-  color: hsl(var(--foreground));
-  line-height: 1.5;
+/* Noise overlay */
+.bg-noise {
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.5' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+  opacity: 0.035;
+  pointer-events: none;
+  mix-blend-mode: overlay;
+}
+
+/* Mesh Background Animations */
+@keyframes mesh-drift {
+  0% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(3%, -3%) scale(1.05); }
+  66% { transform: translate(-2%, 4%) scale(0.95); }
+  100% { transform: translate(0, 0) scale(1); }
+}
+
+.mesh-blob {
+  animation: mesh-drift 15s ease-in-out infinite;
+  filter: blur(140px);
+}
+
+/* Animations */
+@keyframes float {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+  100% { transform: translateY(0px); }
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+.animate-float-delayed {
+  animation: float 7s ease-in-out 2s infinite;
+}
+
+@keyframes pulse-glow {
+  0% { opacity: 0.3; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(1.1); }
+  100% { opacity: 0.3; transform: scale(1); }
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 8s ease-in-out infinite;
 }

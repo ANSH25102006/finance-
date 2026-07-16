@@ -1,139 +1,96 @@
 /**
  * pages/DashboardPage.tsx
- * Protected dashboard — only accessible to authenticated users.
- * Shows user email and a working logout button.
+ * Protected premium dashboard.
  */
 
-import { useNavigate } from 'react-router-dom'
-import { useAuth } from '@/hooks/useAuth'
-import { logout } from '@/services/authService'
-import { queryClient } from '@/lib/queryClient'
+import { Navbar } from "@/components/dashboard/Navbar"
+import { WelcomeHeader } from "@/components/dashboard/WelcomeHeader"
+import { FinancialOverview } from "@/components/dashboard/FinancialOverview"
+import { CashFlowChart } from "@/components/dashboard/CashFlowChart"
+import { FinancialHealth } from "@/components/dashboard/FinancialHealth"
+import { SpendingBreakdown } from "@/components/dashboard/SpendingBreakdown"
+import { RightSidebar } from "@/components/dashboard/RightSidebar"
+import { RecentTransactions } from "@/components/dashboard/RecentTransactions"
+import { BudgetProgress } from "@/components/dashboard/BudgetProgress"
+import { useDashboard } from "@/hooks/useDashboard"
 
 export default function DashboardPage() {
-  const { user } = useAuth()
-  const navigate = useNavigate()
+  const { data: summary, isLoading, error } = useDashboard()
 
-  const handleLogout = () => {
-    logout()
-    // Invalidate all cached queries so stale user data is cleared
-    queryClient.clear()
-    navigate('/login', { replace: true })
+  if (isLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-[#060709] text-emerald-500">
+        <div className="text-sm uppercase tracking-widest font-mono">Loading System...</div>
+      </div>
+    )
+  }
+
+  if (error || !summary) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-[#060709] text-red-500">
+        <div className="text-sm uppercase tracking-widest font-mono">System Offline</div>
+      </div>
+    )
   }
 
   return (
-    <main style={styles.page}>
-      <div style={styles.container}>
-        {/* Top bar */}
-        <header style={styles.topBar}>
-          <span style={styles.brand}>💰 Finance Auditor</span>
-          <button
-            id="logout-btn"
-            onClick={handleLogout}
-            style={styles.logoutBtn}
-          >
-            Sign out
-          </button>
-        </header>
-
-        {/* Welcome card */}
-        <div style={styles.card}>
-          <div style={styles.avatar}>
-            {user?.email?.[0]?.toUpperCase() ?? '?'}
-          </div>
-          <h1 style={styles.greeting}>Welcome back!</h1>
-          <p style={styles.email}>{user?.email}</p>
-          <p style={styles.note}>
-            You're authenticated. Your dashboard content will appear here as features are built.
-          </p>
-          <div style={styles.badge}>🔐 Session active</div>
-        </div>
+    <div className="relative min-h-screen bg-[#060709] text-white selection:bg-emerald-500/30 overflow-hidden">
+      
+      {/* V5 Subtle Ambient Background */}
+      <div className="fixed inset-0 z-0 pointer-events-none">
+        <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] rounded-full bg-emerald-900/5 mesh-blob" />
+        <div className="absolute top-[30%] right-[-15%] w-[45%] h-[55%] rounded-full bg-cyan-900/5 mesh-blob" style={{ animationDelay: '-5s' }} />
+        <div className="absolute bottom-[-10%] left-[20%] w-[40%] h-[40%] rounded-full bg-purple-900/5 mesh-blob" style={{ animationDelay: '-10s' }} />
+        <div className="absolute inset-0 bg-noise" />
       </div>
-    </main>
+
+      <Navbar />
+
+      <main className="relative z-10 mx-auto max-w-[1280px] px-4 sm:px-6 lg:px-8 pb-32 pt-16">
+        
+        <WelcomeHeader summary={summary} />
+        
+        {/* V5 Zero-Gap Mosaic Grid */}
+        <div className="flex flex-col gap-5 mt-4">
+          
+          {/* Row 1: Bare Metal Analytics (No card wrapping) */}
+          <div className="flex flex-col lg:flex-row os-bare-metal rounded-[20px] bg-[#0c0e12]">
+            <div className="flex-grow lg:w-2/3 p-6 hairline-r">
+              <CashFlowChart summary={summary} />
+            </div>
+            <div className="lg:w-1/3 p-6">
+              <FinancialHealth summary={summary} />
+            </div>
+          </div>
+
+          {/* Row 2: Inbox & Matrix */}
+          <div className="grid grid-cols-12 gap-5">
+            <div className="col-span-12 lg:col-span-7 flex">
+              <RightSidebar />
+            </div>
+            <div className="col-span-12 lg:col-span-5 flex">
+              <SpendingBreakdown summary={summary} />
+            </div>
+          </div>
+
+          {/* Row 3: Stripe Pulse Panel */}
+          <div className="w-full">
+            <FinancialOverview summary={summary} />
+          </div>
+
+          {/* Row 4: Apple Wallet Rows */}
+          <div className="grid grid-cols-12 gap-5">
+            <div className="col-span-12 lg:col-span-8 flex">
+              <RecentTransactions summary={summary} />
+            </div>
+            <div className="col-span-12 lg:col-span-4 flex">
+              <BudgetProgress summary={summary} />
+            </div>
+          </div>
+
+        </div>
+      </main>
+    </div>
   )
 }
 
-// ---------------------------------------------------------------------------
-// Inline styles
-// ---------------------------------------------------------------------------
-const styles: Record<string, React.CSSProperties> = {
-  page: {
-    minHeight: '100vh',
-    backgroundColor: '#f9fafb',
-    fontFamily: 'Inter, system-ui, sans-serif',
-  },
-  container: {
-    maxWidth: '720px',
-    margin: '0 auto',
-    padding: '1.5rem 1rem',
-  },
-  topBar: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: '2rem',
-  },
-  brand: {
-    fontSize: '1.125rem',
-    fontWeight: 700,
-    color: '#111827',
-  },
-  logoutBtn: {
-    padding: '0.5rem 1rem',
-    fontSize: '0.875rem',
-    fontWeight: 500,
-    color: '#6b7280',
-    backgroundColor: '#fff',
-    border: '1px solid #d1d5db',
-    borderRadius: '8px',
-    cursor: 'pointer',
-    transition: 'background-color 0.15s',
-  },
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: '12px',
-    padding: '2.5rem',
-    boxShadow: '0 4px 24px rgba(0,0,0,0.06)',
-    border: '1px solid #e5e7eb',
-    textAlign: 'center',
-  },
-  avatar: {
-    width: '64px',
-    height: '64px',
-    borderRadius: '50%',
-    backgroundColor: '#2563eb',
-    color: '#fff',
-    fontSize: '1.5rem',
-    fontWeight: 700,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    margin: '0 auto 1rem',
-  },
-  greeting: {
-    fontSize: '1.5rem',
-    fontWeight: 700,
-    color: '#111827',
-    margin: '0 0 0.5rem',
-  },
-  email: {
-    fontSize: '1rem',
-    color: '#6b7280',
-    margin: '0 0 1.25rem',
-  },
-  note: {
-    fontSize: '0.875rem',
-    color: '#9ca3af',
-    margin: '0 0 1.5rem',
-    lineHeight: 1.6,
-  },
-  badge: {
-    display: 'inline-block',
-    backgroundColor: '#ecfdf5',
-    color: '#065f46',
-    border: '1px solid #6ee7b7',
-    borderRadius: '9999px',
-    padding: '0.375rem 1rem',
-    fontSize: '0.8125rem',
-    fontWeight: 500,
-  },
-}
