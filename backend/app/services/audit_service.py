@@ -807,3 +807,100 @@ class AuditService:
             })
 
         return insights
+
+    def run_rules_audit(
+        self,
+        severity_filter: str = None,
+        rule_type_filter: str = None,
+        start_date: date = None,
+        end_date: date = None
+    ) -> Dict[str, Any]:
+        """
+        Orchestrates all rule-based analyses.
+        Queries all Transactions, Budgets, and Categories in single bulk queries
+        to prevent N+1 database queries.
+        """
+        import logging
+        from sqlalchemy import or_
+        from app.models.category import Category
+        from app.models.budget import Budget
+        from app.models.transaction import Transaction
+
+        logger = logging.getLogger("rules_engine")
+        logger.info(f"Running financial rules audit for user {self.user_id}")
+
+        # 1. Fetch Categories
+        categories = self.db.query(Category).filter(
+            or_(Category.user_id == self.user_id, Category.user_id.is_(None))
+        ).all()
+        categories_map = {cat.id: cat.name for cat in categories}
+
+        # 2. Fetch Budgets
+        budgets = self.db.query(Budget).filter(
+            Budget.user_id == self.user_id
+        ).all()
+
+        # 3. Fetch Transactions
+        tx_query = self.db.query(Transaction).filter(
+            Transaction.user_id == self.user_id
+        )
+
+        if start_date:
+            tx_query = tx_query.filter(Transaction.transaction_date >= start_date)
+        if end_date:
+            tx_query = tx_query.filter(Transaction.transaction_date <= end_date)
+
+        transactions = tx_query.order_by(Transaction.transaction_date).all()
+        logger.info(f"Loaded {len(transactions)} transactions for user {self.user_id}")
+
+        # 4. Instantiate Rules
+        from app.services.rules.subscription_rules import SubscriptionRules
+        from app.services.rules.duplicate_rules import DuplicateRules
+        from app.services.rules.spending_rules import SpendingRules
+        from app.services.rules.income_rules import IncomeRules
+        from app.services.rules.merchant_rules import MerchantRules
+        from app.services.rules.category_rules import CategoryRules
+
+        rules = [
+            SubscriptionRules(),
+            DuplicateRules(),
+            SpendingRules(),
+            IncomeRules(),
+            MerchantRules(),
+            CategoryRules()
+        ]
+
+        # 5. Evaluate all rules
+        findings = []
+        for rule in rules:
+            try:
+                rule_findings = rule.evaluate(
+                    transactions,
+                    budgets=budgets,
+                    categories_map=categories_map
+                )
+                findings.extend(rule_findings)
+            except Exception as e:
+                logger.error(f"Error evaluating rule {rule.__class__.__name__}: {str(e)}", exc_info=True)
+
+        # 6. Apply filters
+        filtered_findings = []
+        for f in findings:
+            if severity_filter and f["severity"].lower() != severity_filter.lower():
+                continue
+            if rule_type_filter and f["rule_type"].lower() != rule_type_filter.lower():
+                continue
+            filtered_findings.append(f)
+
+        # 7. Compute Summary
+        summary = {
+            "findings": len(filtered_findings),
+            "high": sum(1 for f in filtered_findings if f["severity"].lower() == "high"),
+            "medium": sum(1 for f in filtered_findings if f["severity"].lower() == "medium"),
+            "low": sum(1 for f in filtered_findings if f["severity"].lower() == "low")
+        }
+
+        return {
+            "summary": summary,
+            "findings": filtered_findings
+        }

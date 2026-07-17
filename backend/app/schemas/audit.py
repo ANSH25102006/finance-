@@ -1,5 +1,5 @@
 from pydantic import BaseModel, ConfigDict
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from uuid import UUID
 from datetime import datetime
 
@@ -127,3 +127,27 @@ class AuditResponse(BaseModel):
     metadata: AuditMetadata
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class FinancialFinding(BaseModel):
+    id: str
+    rule_type: str
+    severity: str  # "low", "medium", "high"
+    title: str
+    description: str
+    recommendation: str
+    confidence_score: int
+    affected_transactions: List[UUID]
+    metadata: Dict[str, Any]
+
+
+class AuditRulesSummary(BaseModel):
+    findings: int
+    high: int
+    medium: int
+    low: int
+
+
+class FinancialAuditRulesResponse(BaseModel):
+    summary: AuditRulesSummary
+    findings: List[FinancialFinding]

@@ -24,6 +24,22 @@ class Settings(BaseSettings):
     app_version: str = "0.1.0"
     debug: bool = True
 
+    # --- AI Settings ---
+    ai_provider: str = "mock"
+    ai_model: str = "gpt-4o"
+    ai_temperature: float = 0.0
+    ai_max_tokens: int = 1000
+    ai_timeout: float = 30.0
+    ai_retry_count: int = 3
+    ai_retry_backoff: float = 2.0
+
+    # OpenAI specific settings
+    openai_api_key: str = ""
+    openai_model: str = "gpt-4o"
+    openai_temperature: float = 0.0
+    openai_max_tokens: int = 1000
+    openai_timeout: float = 30.0
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"

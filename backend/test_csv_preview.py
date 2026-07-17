@@ -25,18 +25,22 @@ class TestCSVImportPreview(unittest.TestCase):
         self.assertEqual(res.bank_format, "hdfc")
         self.assertEqual(res.total_parsed, 2)
         
-        # MCDonalds transaction check (Withdrawal -> expense)
+        # Starbucks Coffee check (unrecognized -> Unknown)
         tx1 = res.transactions[0]
         self.assertEqual(tx1.amount, 350.0)
         self.assertEqual(tx1.transaction_type, "expense")
-        self.assertEqual(tx1.merchant, "Starbucks Coffee")
+        self.assertEqual(tx1.merchant, "Unknown")
+        self.assertEqual(tx1.category, "Unknown")
+        self.assertEqual(tx1.confidence, 20)
         self.assertEqual(tx1.reference, "REF123")
 
-        # Income check
+        # Income check (unrecognized -> Unknown)
         tx2 = res.transactions[1]
         self.assertEqual(tx2.amount, 5000.0)
         self.assertEqual(tx2.transaction_type, "income")
-        self.assertEqual(tx2.merchant, "Upwork Payout")
+        self.assertEqual(tx2.merchant, "Unknown")
+        self.assertEqual(tx2.category, "Unknown")
+        self.assertEqual(tx2.confidence, 20)
 
     def test_valid_icici_preview(self):
         """Verify successful mapping of ICICI statement layout."""
@@ -55,7 +59,9 @@ class TestCSVImportPreview(unittest.TestCase):
         tx = res.transactions[0]
         self.assertEqual(tx.amount, 1200.0)
         self.assertEqual(tx.transaction_type, "expense")
-        self.assertEqual(tx.merchant, "Amazon In")
+        self.assertEqual(tx.merchant, "Amazon")
+        self.assertEqual(tx.category, "Shopping")
+        self.assertEqual(tx.confidence, 99)
 
     def test_valid_generic_preview(self):
         """Verify generic standard layout mappings."""
@@ -72,8 +78,18 @@ class TestCSVImportPreview(unittest.TestCase):
         )
         self.assertEqual(res.bank_format, "generic")
         self.assertEqual(res.total_parsed, 2)
+        
+        # Zomato Food Order
         self.assertEqual(res.transactions[0].transaction_type, "expense")
+        self.assertEqual(res.transactions[0].merchant, "Zomato")
+        self.assertEqual(res.transactions[0].category, "Food Delivery")
+        self.assertEqual(res.transactions[0].confidence, 99)
+        
+        # Salary Credited
         self.assertEqual(res.transactions[1].transaction_type, "income")
+        self.assertEqual(res.transactions[1].merchant, "Unknown")
+        self.assertEqual(res.transactions[1].category, "Salary")
+        self.assertEqual(res.transactions[1].confidence, 20)
 
     def test_unsupported_format(self):
         """Verify exception on choosing non-supported bank structures."""

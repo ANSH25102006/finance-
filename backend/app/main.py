@@ -62,6 +62,7 @@ from app.routers import dashboard as dashboard_router
 from app.routers import analytics as analytics_router
 from app.routers import audit as audit_router
 from app.routers import imports as imports_router
+from app.routers import ai as ai_router
 
 app.include_router(auth_router.router, prefix="/auth", tags=["Auth"])
 app.include_router(accounts_router.router, prefix="/api", tags=["Accounts"])
@@ -73,6 +74,7 @@ app.include_router(dashboard_router.router, prefix="/api", tags=["Dashboard"])
 app.include_router(analytics_router.router, prefix="/api", tags=["Analytics"])
 app.include_router(audit_router.router, prefix="/api", tags=["Audit"])
 app.include_router(imports_router.router, prefix="/api", tags=["CSV Import"])
+app.include_router(ai_router.router, prefix="/api", tags=["AI Auditor"])
 
 # ---------------------------------------------------------------------------
 # Root endpoints

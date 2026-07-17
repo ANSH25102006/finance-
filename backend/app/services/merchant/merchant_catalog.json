@@ -1,0 +1,117 @@
+[
+  {
+    "canonical_name": "Swiggy",
+    "aliases": ["swiggy", "swiggy order", "swiggy delivery", "swiggy pay"],
+    "category": "Food Delivery"
+  },
+  {
+    "canonical_name": "Zomato",
+    "aliases": ["zomato", "zomato food", "zomato order", "zomato pay"],
+    "category": "Food Delivery"
+  },
+  {
+    "canonical_name": "Blinkit",
+    "aliases": ["blinkit", "grofers", "blinkit order"],
+    "category": "Shopping"
+  },
+  {
+    "canonical_name": "BigBasket",
+    "aliases": ["bigbasket", "big basket", "bbdaily", "bb daily"],
+    "category": "Shopping"
+  },
+  {
+    "canonical_name": "Amazon",
+    "aliases": ["amazon", "amzn", "amzn mktplace", "amazon pay", "amazon.in", "amazon prime"],
+    "category": "Shopping"
+  },
+  {
+    "canonical_name": "Flipkart",
+    "aliases": ["flipkart", "fkrt", "flipkart pay", "flipkart.com"],
+    "category": "Shopping"
+  },
+  {
+    "canonical_name": "Uber",
+    "aliases": ["uber", "uber trip", "uber rides", "uber ride"],
+    "category": "Transport"
+  },
+  {
+    "canonical_name": "Ola",
+    "aliases": ["ola cabs", "ola cab", "ola ride", "ola"],
+    "category": "Transport"
+  },
+  {
+    "canonical_name": "Netflix",
+    "aliases": ["netflix", "netflix.com", "netflix entertainment"],
+    "category": "Entertainment"
+  },
+  {
+    "canonical_name": "Spotify",
+    "aliases": ["spotify", "spotify music", "spotify premium"],
+    "category": "Entertainment"
+  },
+  {
+    "canonical_name": "Apple",
+    "aliases": ["apple", "itunes", "icloud", "apple.com", "apple services"],
+    "category": "Entertainment"
+  },
+  {
+    "canonical_name": "Google",
+    "aliases": ["google", "google services", "google play", "play store", "gsuite", "google cloud"],
+    "category": "Entertainment"
+  },
+  {
+    "canonical_name": "YouTube",
+    "aliases": ["youtube", "yt premium", "youtube premium", "youtube.com"],
+    "category": "Entertainment"
+  },
+  {
+    "canonical_name": "Airtel",
+    "aliases": ["airtel", "airtel bill", "bharti airtel"],
+    "category": "Telecom"
+  },
+  {
+    "canonical_name": "Jio",
+    "aliases": ["jio", "rel jio", "reliance jio", "jio fiber"],
+    "category": "Telecom"
+  },
+  {
+    "canonical_name": "Vodafone",
+    "aliases": ["vodafone", "vi ", "idea", "vodafone idea", "vi bill"],
+    "category": "Telecom"
+  },
+  {
+    "canonical_name": "BSES",
+    "aliases": ["bses", "bses rajdhani", "bses yamuna"],
+    "category": "Utilities"
+  },
+  {
+    "canonical_name": "Adani Electricity",
+    "aliases": ["adani electricity", "adani power", "adani transmission"],
+    "category": "Utilities"
+  },
+  {
+    "canonical_name": "Apollo Pharmacy",
+    "aliases": ["apollo pharmacy", "apollo", "apollo pharm"],
+    "category": "Healthcare"
+  },
+  {
+    "canonical_name": "MedPlus",
+    "aliases": ["medplus", "medplus pharmacy", "med plus"],
+    "category": "Healthcare"
+  },
+  {
+    "canonical_name": "Paytm",
+    "aliases": ["paytm", "pytm", "paytm wallet"],
+    "category": "Payments"
+  },
+  {
+    "canonical_name": "PhonePe",
+    "aliases": ["phonepe", "phone pe"],
+    "category": "Payments"
+  },
+  {
+    "canonical_name": "Google Pay",
+    "aliases": ["google pay", "gpay", "g pay"],
+    "category": "Payments"
+  }
+]

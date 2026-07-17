@@ -25,10 +25,20 @@ class CSVImportService:
             raise HTTPException(status_code=400, detail="No transaction data rows found after statement headers.")
 
         # 4. Map records to normalized layout
+        from app.services.merchant.merchant_service import MerchantService
+        merchant_service = MerchantService()
+
         transactions = []
         for idx, row in enumerate(parsed_rows):
             try:
                 tx_preview = CSVMapper.map_row_to_preview(row, format_key)
+                
+                # Recognize merchant details using Merchant Intelligence
+                recognition = merchant_service.recognize(tx_preview.description)
+                tx_preview.merchant = recognition["merchant"]
+                tx_preview.category = recognition["category"]
+                tx_preview.confidence = recognition["confidence"]
+
                 transactions.append(tx_preview)
             except HTTPException as e:
                 # Enriched context detail with row indices for easier client debugging
@@ -68,7 +78,8 @@ class CSVImportService:
                 imported=0,
                 duplicates=0,
                 failed=0,
-                message="No transactions found in statement."
+                message="No transactions found in statement.",
+                transactions=[]
             )
 
         # 2. Extract boundary dates to query only target records
@@ -91,6 +102,24 @@ class CSVImportService:
         }
 
         # 4. Map and filter records
+        from app.models.category import Category
+        from sqlalchemy import or_
+
+        category_aesthetics = {
+            "Food Delivery": {"icon": "Utensils", "color": "#ef4444"},
+            "Shopping": {"icon": "ShoppingBag", "color": "#ec4899"},
+            "Transport": {"icon": "Car", "color": "#3b82f6"},
+            "Entertainment": {"icon": "Play", "color": "#8b5cf6"},
+            "Healthcare": {"icon": "Activity", "color": "#10b981"},
+            "Utilities": {"icon": "Zap", "color": "#f59e0b"},
+            "Telecom": {"icon": "Phone", "color": "#06b6d4"},
+            "Payments": {"icon": "CreditCard", "color": "#64748b"},
+            "Salary": {"icon": "DollarSign", "color": "#22c55e"},
+            "Transfer": {"icon": "ArrowRightLeft", "color": "#6366f1"},
+            "Unknown": {"icon": "HelpCircle", "color": "#94a3b8"}
+        }
+
+        local_category_cache = {}
         transactions_to_insert = []
         duplicates_count = 0
 
@@ -100,6 +129,30 @@ class CSVImportService:
                 duplicates_count += 1
                 continue
 
+            # Look up or create category
+            cat_name = tx.category or "Unknown"
+            if cat_name in local_category_cache:
+                db_cat = local_category_cache[cat_name]
+            else:
+                db_cat = db.query(Category).filter(
+                    Category.name.ilike(cat_name),
+                    or_(Category.user_id == user_id, Category.user_id.is_(None))
+                ).first()
+                
+                if not db_cat:
+                    # Create new category dynamic record
+                    aest = category_aesthetics.get(cat_name, {"icon": "HelpCircle", "color": "#94a3b8"})
+                    db_cat = Category(
+                        user_id=user_id,
+                        name=cat_name,
+                        type=tx.transaction_type,
+                        icon=aest["icon"],
+                        color=aest["color"]
+                    )
+                    db.add(db_cat)
+                    db.flush()  # Generate UUID ID for category assignment
+                local_category_cache[cat_name] = db_cat
+
             db_tx = Transaction(
                 user_id=user_id,
                 account_id=account_id,
@@ -108,6 +161,8 @@ class CSVImportService:
                 transaction_date=tx.date,
                 description=tx.description,
                 merchant=tx.merchant,
+                confidence_score=tx.confidence,
+                category_id=db_cat.id,
                 notes=f"Reference: {tx.reference}" if tx.reference else None
             )
             transactions_to_insert.append(db_tx)
@@ -129,5 +184,6 @@ class CSVImportService:
             imported=len(transactions_to_insert),
             duplicates=duplicates_count,
             failed=0,
-            message="Import completed successfully."
+            message="Import completed successfully.",
+            transactions=preview.transactions
         )

@@ -9,6 +9,8 @@ class NormalizedTransactionPreview(BaseModel):
     amount: float
     transaction_type: str  # 'income' or 'expense'
     merchant: Optional[str] = None
+    category: Optional[str] = None
+    confidence: Optional[int] = None
     reference: Optional[str] = None
     raw_data: Dict[str, str]
 
@@ -25,3 +27,4 @@ class CSVImportSummaryResponse(BaseModel):
     duplicates: int
     failed: int
     message: str
+    transactions: List[NormalizedTransactionPreview] = []
