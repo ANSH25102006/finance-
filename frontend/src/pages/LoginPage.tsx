@@ -8,8 +8,10 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { login } from '@/services/authService'
+import { queryClient } from '@/lib/queryClient'
+import { extractErrorMessage } from '@/lib/errorUtils'
 
 // ---------------------------------------------------------------------------
 // Validation schema
@@ -26,6 +28,11 @@ type LoginFormData = z.infer<typeof loginSchema>
 // ---------------------------------------------------------------------------
 export default function LoginPage() {
   const navigate = useNavigate()
+  const location = useLocation()
+  const locState = location.state as { email?: string; message?: string } | null
+  const successMessage = locState?.message
+  const defaultEmail = locState?.email ?? ''
+
   const [serverError, setServerError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -33,21 +40,23 @@ export default function LoginPage() {
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm<LoginFormData>({ resolver: zodResolver(loginSchema) })
+  } = useForm<LoginFormData>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: {
+      email: defaultEmail,
+      password: '',
+    },
+  })
 
   const onSubmit = async (data: LoginFormData) => {
     setServerError(null)
     setIsSubmitting(true)
     try {
       await login({ email: data.email, password: data.password })
+      await queryClient.invalidateQueries({ queryKey: ['auth', 'me'] })
       navigate('/dashboard', { replace: true })
     } catch (err: unknown) {
-      const axiosErr = err as { response?: { status?: number; data?: { detail?: string } } }
-      if (axiosErr.response?.status === 401) {
-        setServerError('Incorrect email or password.')
-      } else {
-        setServerError(axiosErr.response?.data?.detail ?? 'Something went wrong. Please try again.')
-      }
+      setServerError(extractErrorMessage(err, 'Incorrect email or password.'))
     } finally {
       setIsSubmitting(false)
     }
@@ -61,6 +70,9 @@ export default function LoginPage() {
           <h1 style={styles.title}>Welcome back</h1>
           <p style={styles.subtitle}>Sign in to your account</p>
         </div>
+
+        {/* Success message banner */}
+        {successMessage && <div style={styles.successBanner}>{successMessage}</div>}
 
         {/* Server error */}
         {serverError && <div style={styles.errorBanner}>{serverError}</div>}
@@ -144,6 +156,15 @@ const styles: Record<string, React.CSSProperties> = {
   header: { marginBottom: '1.5rem', textAlign: 'center' },
   title: { fontSize: '1.5rem', fontWeight: 700, color: '#111827', margin: '0 0 0.25rem' },
   subtitle: { fontSize: '0.875rem', color: '#6b7280', margin: 0 },
+  successBanner: {
+    backgroundColor: '#ecfdf5',
+    border: '1px solid #6ee7b7',
+    color: '#047857',
+    borderRadius: '8px',
+    padding: '0.75rem 1rem',
+    marginBottom: '1rem',
+    fontSize: '0.875rem',
+  },
   errorBanner: {
     backgroundColor: '#fef2f2',
     border: '1px solid #fca5a5',

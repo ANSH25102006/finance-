@@ -22,12 +22,14 @@ export function UploadDropzone({ onFileSelected, onError }: UploadDropzoneProps)
   }
 
   const validateAndSelectFile = (file: File) => {
-    if (!file.name.toLowerCase().endsWith(".csv")) {
-      onError("Invalid file type. Only CSV statement files are allowed.")
+    const isCSV = file.name.toLowerCase().endsWith(".csv")
+    const isPDF = file.name.toLowerCase().endsWith(".pdf")
+    if (!isCSV && !isPDF) {
+      onError("Invalid file type. Only CSV or PDF statement files are allowed.")
       return
     }
     if (file.size > 5 * 1024 * 1024) {
-      onError("File size exceeds 5MB limit. Please upload a smaller CSV statement.")
+      onError("File size exceeds 5MB limit. Please upload a smaller statement.")
       return
     }
     onFileSelected(file)
@@ -70,7 +72,7 @@ export function UploadDropzone({ onFileSelected, onError }: UploadDropzoneProps)
       <input
         ref={inputRef}
         type="file"
-        accept=".csv"
+        accept=".csv,.pdf"
         className="hidden"
         onChange={handleChange}
       />
@@ -79,11 +81,11 @@ export function UploadDropzone({ onFileSelected, onError }: UploadDropzoneProps)
       </div>
       
       <p className="text-sm font-medium text-white">
-        Drag and drop your statement CSV here, or <span className="text-emerald-400 underline decoration-dotted">browse</span>
+        Drag and drop your statement CSV/PDF here, or <span className="text-emerald-400 underline decoration-dotted">browse</span>
       </p>
       
       <p className="text-[10px] text-gray-500 mt-2 font-mono uppercase tracking-wider">
-        CSV files up to 5MB are supported
+        CSV and PDF files up to 5MB are supported
       </p>
     </div>
   )

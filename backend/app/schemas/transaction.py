@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, field_serializer
 from typing import Optional
 from uuid import UUID
 from datetime import datetime, date
@@ -73,6 +73,11 @@ class TransactionResponse(TransactionBase):
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+    @field_serializer('amount')
+    def serialize_amount(self, v: Decimal, _info) -> float:
+        """Serialize Decimal amount as float so JSON contains a number not a string."""
+        return float(v)
 
 
 class TransactionListResponse(BaseModel):

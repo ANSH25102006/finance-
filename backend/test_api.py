@@ -1,7 +1,7 @@
-import requests
+from fastapi.testclient import TestClient
+from app.main import app
 
-try:
-    response = requests.get("http://127.0.0.1:8000/docs")
-    print(f"Status Code: {response.status_code}")
-except Exception as e:
-    print(f"Error: {e}")
+def test_docs_endpoint():
+    client = TestClient(app)
+    response = client.get("/docs")
+    assert response.status_code == 200

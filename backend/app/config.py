@@ -23,22 +23,7 @@ class Settings(BaseSettings):
     app_name: str = "Personal Finance Spend Auditor"
     app_version: str = "0.1.0"
     debug: bool = True
-
-    # --- AI Settings ---
-    ai_provider: str = "mock"
-    ai_model: str = "gpt-4o"
-    ai_temperature: float = 0.0
-    ai_max_tokens: int = 1000
-    ai_timeout: float = 30.0
-    ai_retry_count: int = 3
-    ai_retry_backoff: float = 2.0
-
-    # OpenAI specific settings
-    openai_api_key: str = ""
-    openai_model: str = "gpt-4o"
-    openai_temperature: float = 0.0
-    openai_max_tokens: int = 1000
-    openai_timeout: float = 30.0
+    cors_origins: str = ""
 
     class Config:
         env_file = ".env"
@@ -50,4 +35,13 @@ class Settings(BaseSettings):
 def get_settings() -> Settings:
     """Return a cached Settings instance.
     Use this via FastAPI dependency injection: Depends(get_settings)."""
-    return Settings()
+    settings = Settings()
+
+    # Fail-fast security validation for production mode
+    if not settings.debug:
+        if settings.secret_key == "change-me-in-production":
+            raise ValueError("SECRET_KEY must be explicitly configured in production mode.")
+        if settings.database_url.startswith("sqlite"):
+            raise ValueError("SQLite database is not permitted in production mode. Please configure a PostgreSQL database URL.")
+
+    return settings

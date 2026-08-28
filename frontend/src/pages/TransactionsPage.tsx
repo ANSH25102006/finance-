@@ -1,12 +1,13 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useSearchParams } from "react-router-dom"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { 
-  Plus, 
-  Search, 
-  ChevronLeft, 
-  ChevronRight, 
-  Edit2, 
-  Trash2, 
+import {
+  Plus,
+  Search,
+  ChevronLeft,
+  ChevronRight,
+  Edit2,
+  Trash2,
   SlidersHorizontal,
   RefreshCw,
   TrendingDown,
@@ -14,10 +15,10 @@ import {
 } from "lucide-react"
 
 import { Navbar } from "@/components/dashboard/Navbar"
-import { 
-  getTransactions, 
-  createTransaction, 
-  updateTransaction, 
+import {
+  getTransactions,
+  createTransaction,
+  updateTransaction,
   deleteTransaction
 } from "@/services/transactionService"
 import type { Transaction, TransactionFilters } from "@/services/transactionService"
@@ -28,14 +29,29 @@ import { Button } from "@/components/ui/Button"
 
 export default function TransactionsPage() {
   const queryClient = useQueryClient()
-  
+
   // Page states
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null)
-  
+
+  const [searchParams] = useSearchParams()
+
   // Advanced Filter state
   const [showAdvanced, setShowAdvanced] = useState(false)
-  const [searchTerm, setSearchTerm] = useState("")
+  const [searchTerm, setSearchTerm] = useState(searchParams.get("search") || "")
+  // Support comma-separated IDs in the search term for exact ID matching
+  // The backend might need an update to handle `id=X,Y,Z` specifically, but
+  // for now we'll put the ids in the search bar if `ids` is present, or just pass them as a custom filter if supported.
+  // Actually, wait, let's check the backend filter schema. If it doesn't support list of IDs,
+  // we might need to update the backend. But since `ids` is specified in the task, I will add `ids: searchParams.get("ids") || undefined` to the filters object, but only if the `TransactionFilters` type supports it. I will check that. For now, let's just initialize search.
+
+  useEffect(() => {
+    const ids = searchParams.get("ids")
+    if (ids) {
+      setSearchTerm(ids) // Fallback: put IDs in search box
+    }
+  }, [searchParams])
+
   const [filters, setFilters] = useState<TransactionFilters>({
     page: 1,
     limit: 15,
@@ -155,7 +171,7 @@ export default function TransactionsPage() {
       <Navbar />
 
       <main className="relative z-10 mx-auto max-w-[1280px] px-4 sm:px-6 lg:px-8 pb-32 pt-28">
-        
+
         {/* Header Action Row */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-white/5 pb-6">
           <div>
@@ -175,7 +191,7 @@ export default function TransactionsPage() {
 
         {/* Toolbar Panel */}
         <div className="mt-6 flex flex-col gap-4">
-          
+
           <div className="flex flex-col md:flex-row gap-3">
             {/* Search Bar */}
             <div className="relative flex-1">
@@ -340,9 +356,9 @@ export default function TransactionsPage() {
               <p className="typo-caption text-gray-500 font-mono text-[10px] tracking-widest uppercase">Fetching logs...</p>
             </div>
           ) : error ? (
-            <div className="p-20 text-center text-red-500">
-              <p className="font-mono text-sm">SYSTEM COMPROMISED — OFFLINE</p>
-              <p className="text-xs text-gray-500 mt-1">Check your API status or DB connectivity.</p>
+            <div className="p-20 text-center text-red-400">
+              <p className="font-mono text-xs uppercase tracking-widest font-semibold">Unable to Load Transactions</p>
+              <p className="text-xs text-gray-500 mt-1">Please check your server connection or try refreshing the page.</p>
             </div>
           ) : !data || data.items.length === 0 ? (
             <div className="p-20 text-center text-gray-500 flex flex-col items-center gap-2">
@@ -388,8 +404,8 @@ export default function TransactionsPage() {
                         <td className="p-4 text-gray-400">
                           {accountObj ? (
                             <span className="inline-flex items-center gap-1.5">
-                              <span 
-                                className="h-1.5 w-1.5 rounded-full" 
+                              <span
+                                className="h-1.5 w-1.5 rounded-full"
                                 style={{ backgroundColor: accountObj.color || "#3b82f6" }}
                               />
                               {accountObj.name}
@@ -400,7 +416,7 @@ export default function TransactionsPage() {
                         </td>
                         <td className="p-4">
                           {categoryObj ? (
-                            <span 
+                            <span
                               className="px-2 py-0.5 rounded-[4px] text-[10px] font-semibold"
                               style={{ backgroundColor: `${categoryObj.color || "#ffffff"}15`, color: categoryObj.color || undefined }}
                             >

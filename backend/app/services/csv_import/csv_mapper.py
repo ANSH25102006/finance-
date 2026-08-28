@@ -129,6 +129,18 @@ class CSVMapper:
             if words:
                 merchant = " ".join(words[:2]).strip()
 
+        def sanitize_cell(text: str | None) -> str | None:
+            if not text:
+                return text
+            # Strip dangerous formula prefixes to prevent CSV injection
+            if text.startswith(('=', '+', '-', '@', '\t', '\r')):
+                return text.lstrip('=+-@\t\r').strip()
+            return text
+
+        description = sanitize_cell(description) or description
+        merchant = sanitize_cell(merchant)
+        reference = sanitize_cell(reference)
+
         return NormalizedTransactionPreview(
             date=parsed_date,
             description=description,

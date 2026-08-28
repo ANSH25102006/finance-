@@ -25,7 +25,10 @@ config = context.config
 
 # Set the database URL from the application settings.
 settings = get_settings()
-config.set_main_option("sqlalchemy.url", settings.database_url)
+db_url = settings.database_url
+if db_url.startswith("postgres://"):
+    db_url = db_url.replace("postgres://", "postgresql://", 1)
+config.set_main_option("sqlalchemy.url", db_url)
 
 # Configure Python logging from alembic.ini.
 if config.config_file_name is not None:

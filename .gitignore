@@ -30,10 +30,13 @@ ENV/
 .env/
 backend/venv/
 
-# Environment variables (never commit real secrets)
+# Environment variables & local databases (never commit real secrets or local data)
 .env
 backend/.env
 frontend/.env
+*.db
+*.sqlite3
+dev.db
 
 # Alembic
 # (keep alembic/versions tracked — only exclude local artifacts)

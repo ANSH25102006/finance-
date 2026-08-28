@@ -4,6 +4,7 @@
  */
 
 import { apiClient } from '@/services/api'
+import { queryClient } from '@/lib/queryClient'
 
 export interface SignupPayload {
   email: string
@@ -33,16 +34,26 @@ export async function signup(payload: SignupPayload): Promise<UserResponse> {
   return data
 }
 
-/** Login with email + password. Stores JWT in localStorage on success. */
+/** Login with email + password. Stores JWT in localStorage on success and primes user cache. */
 export async function login(payload: LoginPayload): Promise<TokenResponse> {
   const { data } = await apiClient.post<TokenResponse>('/auth/login', payload)
   localStorage.setItem('access_token', data.access_token)
+
+  // Immediately fetch and seed the user profile into TanStack query cache
+  try {
+    const meData = await getMe()
+    queryClient.setQueryData(['auth', 'me'], meData)
+  } catch (err) {
+    console.error('Failed to pre-fetch user profile:', err)
+  }
+
   return data
 }
 
 /** Remove JWT from localStorage (client-side logout). */
 export function logout(): void {
   localStorage.removeItem('access_token')
+  queryClient.setQueryData(['auth', 'me'], null)
 }
 
 /** Fetch the currently authenticated user's profile. */

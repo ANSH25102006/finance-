@@ -1,28 +1,28 @@
 import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
-import { 
-  TrendingUp, 
-  TrendingDown, 
-  DollarSign, 
-  Activity, 
+import {
+  TrendingUp,
+  TrendingDown,
+  DollarSign,
+  Activity,
   RefreshCw,
   Award
 } from "lucide-react"
-import { 
-  AreaChart, 
-  Area, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  ResponsiveContainer, 
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
   Cell,
   Pie,
   PieChart
 } from "recharts"
 
 import { Navbar } from "@/components/dashboard/Navbar"
-import { 
+import {
   getAnalyticsDashboard,
   getAnalyticsMonthlyTrends,
   getAnalyticsCategoryBreakdown,
@@ -113,7 +113,7 @@ export default function AnalyticsPage() {
     const cells = []
     const today = new Date()
     today.setHours(0,0,0,0)
-    
+
     // Mapping of date ISO string -> spend amount
     const dailySpendMap = new Map(dailySpending.map(d => [d.date, d.total_spend]))
 
@@ -133,8 +133,8 @@ export default function AnalyticsPage() {
       }
 
       cells.push(
-        <div 
-          key={dateStr} 
+        <div
+          key={dateStr}
           className={`h-2.5 w-2.5 rounded-[2px] border ${colorClass} transition-all duration-300 hover:scale-125 cursor-pointer`}
           title={`${d.toLocaleDateString("en-IN")}: ${formatCurrency(spend)}`}
         />
@@ -167,7 +167,7 @@ export default function AnalyticsPage() {
       <Navbar />
 
       <main className="relative z-10 mx-auto max-w-[1280px] px-4 sm:px-6 lg:px-8 pb-32 pt-28">
-        
+
         {/* Header */}
         <div className="border-b border-white/5 pb-6">
           <h1 className="typo-display text-2xl font-bold">Financial Analytics</h1>
@@ -176,7 +176,7 @@ export default function AnalyticsPage() {
 
         {/* row 1: Key Summary stats */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mt-6">
-          
+
           {/* Card: Balance */}
           <div className="os-card p-5 flex flex-col justify-between">
             <div className="flex items-center justify-between">
@@ -231,7 +231,7 @@ export default function AnalyticsPage() {
 
         {/* Row 2: Health Score Widget & Cash flow Chart */}
         <div className="grid grid-cols-12 gap-5 mt-6">
-          
+
           {/* Health Score */}
           <div className="col-span-12 lg:col-span-4 os-card p-6 flex flex-col justify-between border border-white/5">
             <div>
@@ -298,7 +298,7 @@ export default function AnalyticsPage() {
                 <div className="flex items-center gap-1 typo-badge text-[8px] text-cyan-400"><span className="h-1.5 w-1.5 rounded-full bg-cyan-400" /> Expense</div>
               </div>
             </div>
-            
+
             <div className="w-full h-[220px]">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={trends} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
@@ -314,7 +314,17 @@ export default function AnalyticsPage() {
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.02)" />
                   <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: "#4b5563" }} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: "#4b5563" }} tickFormatter={(val) => `₹${val / 1000}k`} />
+                  <YAxis
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fontSize: 9, fill: "#4b5563" }}
+                    tickFormatter={(val) => {
+                      if (val >= 10000000) return `₹${(val / 10000000).toFixed(1)}Cr`
+                      if (val >= 100000) return `₹${(val / 100000).toFixed(1)}L`
+                      if (val >= 1000) return `₹${(val / 1000).toFixed(val % 1000 === 0 ? 0 : 1)}k`
+                      return `₹${val}`
+                    }}
+                  />
                   <Tooltip
                     contentStyle={{ backgroundColor: "#0c0e12", border: "1px solid rgba(255,255,255,0.05)", borderRadius: "8px" }}
                     labelStyle={{ fontSize: "9px", color: "#6b7280", textTransform: "uppercase" }}
@@ -390,7 +400,7 @@ export default function AnalyticsPage() {
 
           {/* Average Spending Stats & Daily Spending Heatmap */}
           <div className="col-span-12 lg:col-span-7 flex flex-col gap-5">
-            
+
             {/* Stats Card */}
             <div className="os-card p-6 flex-grow border border-white/5">
               <h3 className="typo-heading text-sm font-semibold">Spending Statistics</h3>
@@ -402,7 +412,7 @@ export default function AnalyticsPage() {
                   <h4 className="text-xl font-bold tracking-tight text-white tabular-nums mt-1">{formatCurrency(spendingTrend?.average_daily_spend || 0)}</h4>
                   <p className="text-[10px] text-gray-500 mt-1">Calculated over the last 30 days</p>
                 </div>
-                
+
                 <div>
                   <span className="typo-subheading text-[8px] text-gray-500">Average Monthly Spend</span>
                   <h4 className="text-xl font-bold tracking-tight text-white tabular-nums mt-1">{formatCurrency(spendingTrend?.average_monthly_spend || 0)}</h4>
@@ -524,4 +534,3 @@ export default function AnalyticsPage() {
     </div>
   )
 }
-

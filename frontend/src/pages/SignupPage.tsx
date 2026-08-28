@@ -10,6 +10,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useNavigate, Link } from 'react-router-dom'
 import { signup } from '@/services/authService'
+import { extractErrorMessage } from '@/lib/errorUtils'
 
 // ---------------------------------------------------------------------------
 // Validation schema
@@ -46,16 +47,9 @@ export default function SignupPage() {
     setIsSubmitting(true)
     try {
       await signup({ email: data.email, password: data.password })
-      navigate('/login', { state: { message: 'Account created! Please sign in.' } })
+      navigate('/login', { state: { email: data.email, message: 'Account created! Please sign in.' } })
     } catch (err: unknown) {
-      const axiosErr = err as { response?: { status?: number; data?: { detail?: string } } }
-      if (axiosErr.response?.status === 400) {
-        setServerError(axiosErr.response.data?.detail ?? 'This email is already registered.')
-      } else if (axiosErr.response?.status === 422) {
-        setServerError('Please check your inputs and try again.')
-      } else {
-        setServerError('Something went wrong. Please try again.')
-      }
+      setServerError(extractErrorMessage(err, 'Could not create account. Please try again.'))
     } finally {
       setIsSubmitting(false)
     }

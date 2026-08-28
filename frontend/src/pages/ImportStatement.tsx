@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react"
-import { 
-  FileSpreadsheet, 
-  RefreshCw, 
-  AlertCircle, 
+import {
+  FileSpreadsheet,
+  RefreshCw,
+  AlertCircle,
   CheckCircle,
   Database,
-  ArrowRight
+  ArrowRight,
+  Plus
 } from "lucide-react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { useNavigate } from "react-router-dom"
@@ -18,6 +19,7 @@ import { ImportStats } from "@/components/import/ImportStats"
 import { getAccounts } from "@/services/accountService"
 import { previewCSVImport, importCSVTransactions } from "@/services/importService"
 import type { CSVPreviewResponse, CSVImportSummary } from "@/services/importService"
+import { CreateAccountModal } from "@/components/import/CreateAccountModal"
 
 export default function ImportStatement() {
   const queryClient = useQueryClient()
@@ -28,9 +30,10 @@ export default function ImportStatement() {
   const [selectedAccountId, setSelectedAccountId] = useState<string>("")
   const [loading, setLoading] = useState<boolean>(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
-  
+
   const [previewData, setPreviewData] = useState<CSVPreviewResponse | null>(null)
   const [importSummary, setImportSummary] = useState<CSVImportSummary | null>(null)
+  const [isAccountModalOpen, setIsAccountModalOpen] = useState(false)
 
   // 1. Fetch Accounts
   const { data: accounts = [] } = useQuery({
@@ -58,7 +61,7 @@ export default function ImportStatement() {
       queryClient.invalidateQueries({ queryKey: ["transactions"] })
       queryClient.invalidateQueries({ queryKey: ["dashboard", "summary"] })
       queryClient.invalidateQueries({ queryKey: ["analytics"] })
-      
+
       setImportSummary(summary)
       // Reset temporary preview state
       setPreviewData(null)
@@ -73,7 +76,7 @@ export default function ImportStatement() {
   // Calculations for Stats
   const getPreviewStats = () => {
     if (!previewData) return { totalCount: 0, incomeTotal: 0, expenseTotal: 0 }
-    
+
     let income = 0
     let expense = 0
     previewData.transactions.forEach((tx) => {
@@ -148,7 +151,7 @@ export default function ImportStatement() {
       <Navbar />
 
       <main className="relative z-10 mx-auto max-w-[1280px] px-4 sm:px-6 lg:px-8 pb-32 pt-28">
-        
+
         {/* Header */}
         <div className="border-b border-white/5 pb-6">
           <h1 className="typo-display text-2xl font-bold">Import Statements</h1>
@@ -208,77 +211,101 @@ export default function ImportStatement() {
         ) : (
           /* WORKFLOW PANELS */
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mt-6">
-            
+
             {/* Left panel: Config Console */}
             <div className="lg:col-span-5 flex flex-col gap-6">
-              
+
               <div className="os-card p-6 border border-white/5 flex flex-col gap-4">
                 <h3 className="typo-heading text-sm font-semibold">Select Configuration</h3>
-                
-                {/* Format selection */}
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Bank Format</label>
-                  <select
-                    value={bankFormat}
-                    onChange={(e) => setBankFormat(e.target.value)}
-                    disabled={loading || importMutation.isPending}
-                    className="h-10 rounded-lg bg-[#0c0e12] border border-white/5 px-3 text-xs text-white focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer disabled:opacity-50"
-                  >
-                    <option value="hdfc">HDFC Bank CSV Statement</option>
-                    <option value="icici">ICICI Bank CSV Statement</option>
-                    <option value="generic">Generic Transaction CSV</option>
-                  </select>
-                </div>
+                {accounts.length === 0 ? (
+                  <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 flex flex-col gap-3 text-amber-400 mt-2">
+                    <div className="flex items-center gap-2">
+                      <AlertCircle className="h-5 w-5 shrink-0" />
+                      <h4 className="text-xs font-semibold">No Accounts Available</h4>
+                    </div>
+                    <p className="text-[11px] text-amber-400/80 leading-relaxed">
+                      You need a destination account to import transactions into. Please create an account to proceed.
+                    </p>
+                    <button
+                      onClick={() => setIsAccountModalOpen(true)}
+                      className="mt-2 h-8 rounded-lg bg-amber-500 hover:bg-amber-400 font-semibold text-[10px] text-black transition-all flex items-center justify-center gap-2 w-full"
+                    >
+                      <Plus className="h-3 w-3" />
+                      Create Account
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    {/* Format selection */}
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Bank Format</label>
+                      <select
+                        value={bankFormat}
+                        onChange={(e) => setBankFormat(e.target.value)}
+                        disabled={loading || importMutation.isPending}
+                        className="h-10 rounded-lg bg-[#0c0e12] border border-white/5 px-3 text-xs text-white focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer disabled:opacity-50"
+                      >
+                        <option value="hdfc">HDFC Bank CSV Statement</option>
+                        <option value="icici">ICICI Bank CSV Statement</option>
+                        <option value="generic">Generic Transaction CSV</option>
+                      </select>
+                    </div>
 
-                {/* Account selection */}
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Destination Account</label>
-                  <select
-                    value={selectedAccountId}
-                    onChange={(e) => setSelectedAccountId(e.target.value)}
-                    disabled={loading || importMutation.isPending}
-                    className="h-10 rounded-lg bg-[#0c0e12] border border-white/5 px-3 text-xs text-white focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer disabled:opacity-50"
-                  >
-                    {accounts.length === 0 ? (
-                      <option value="" disabled>No accounts available</option>
-                    ) : (
-                      accounts.map((acc) => (
-                        <option key={acc.id} value={acc.id}>
-                          {acc.name} (₹{acc.balance.toLocaleString()})
-                        </option>
-                      ))
+                    {/* Account selection */}
+                    <div className="flex flex-col gap-1.5">
+                      <div className="flex items-center justify-between">
+                        <label className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Destination Account</label>
+                        <button
+                          onClick={() => setIsAccountModalOpen(true)}
+                          className="text-[10px] text-emerald-400 hover:text-emerald-300 font-semibold flex items-center gap-1 transition-colors"
+                        >
+                          <Plus className="h-3 w-3" /> Add New
+                        </button>
+                      </div>
+                      <select
+                        value={selectedAccountId}
+                        onChange={(e) => setSelectedAccountId(e.target.value)}
+                        disabled={loading || importMutation.isPending}
+                        className="h-10 rounded-lg bg-[#0c0e12] border border-white/5 px-3 text-xs text-white focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer disabled:opacity-50"
+                      >
+                        {accounts.map((acc) => (
+                          <option key={acc.id} value={acc.id}>
+                            {acc.name} (₹{acc.balance.toLocaleString()})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Dropzone or file card */}
+                    <div className="mt-2">
+                      {!file ? (
+                        <UploadDropzone
+                          onFileSelected={handleFileSelect}
+                          onError={(msg) => setErrorMsg(msg)}
+                        />
+                      ) : (
+                        <FileCard file={file} onRemove={handleRemoveFile} />
+                      )}
+                    </div>
+
+                    {/* Action buttons */}
+                    {file && (
+                      <button
+                        onClick={handlePreview}
+                        disabled={loading || importMutation.isPending}
+                        className="h-10 w-full rounded-lg bg-emerald-500 hover:bg-emerald-400 font-semibold text-xs text-black transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                      >
+                        {loading ? (
+                          <>
+                            <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                            Parsing statement...
+                          </>
+                        ) : (
+                          "Preview Transactions"
+                        )}
+                      </button>
                     )}
-                  </select>
-                </div>
-
-                {/* Dropzone or file card */}
-                <div className="mt-2">
-                  {!file ? (
-                    <UploadDropzone
-                      onFileSelected={handleFileSelect}
-                      onError={(msg) => setErrorMsg(msg)}
-                    />
-                  ) : (
-                    <FileCard file={file} onRemove={handleRemoveFile} />
-                  )}
-                </div>
-
-                {/* Action buttons */}
-                {file && (
-                  <button
-                    onClick={handlePreview}
-                    disabled={loading || importMutation.isPending}
-                    className="h-10 w-full rounded-lg bg-emerald-500 hover:bg-emerald-400 font-semibold text-xs text-black transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-                  >
-                    {loading ? (
-                      <>
-                        <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                        Parsing statement...
-                      </>
-                    ) : (
-                      "Preview Transactions"
-                    )}
-                  </button>
+                  </>
                 )}
               </div>
 
@@ -287,7 +314,7 @@ export default function ImportStatement() {
                 <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-4 flex gap-3 text-red-400 animate-shake">
                   <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
                   <div>
-                    <h4 className="text-xs font-semibold">Operation Violation</h4>
+                    <h4 className="text-xs font-semibold">Import Error</h4>
                     <p className="text-[10px] text-red-400/80 leading-normal mt-1">{errorMsg}</p>
                   </div>
                 </div>
@@ -345,7 +372,7 @@ export default function ImportStatement() {
                     incomeTotal={incomeTotal}
                     expenseTotal={expenseTotal}
                   />
-                  
+
                   <div className="flex flex-col gap-3">
                     <h3 className="typo-subheading text-[10px] text-gray-500 uppercase tracking-widest font-semibold">Normalized Transactions</h3>
                     <PreviewTable transactions={previewData.transactions} />
@@ -358,6 +385,10 @@ export default function ImportStatement() {
         )}
 
       </main>
+
+      {isAccountModalOpen && (
+        <CreateAccountModal onClose={() => setIsAccountModalOpen(false)} />
+      )}
     </div>
   )
 }

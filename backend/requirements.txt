@@ -34,7 +34,6 @@ typing-inspection==0.4.2
 typing_extensions==4.16.0
 uvicorn==0.51.0
 uvloop==0.22.1
-watchfiles==1.2.0
 websockets==16.0
-openai==2.46.0
 
+pdfplumber==0.11.0

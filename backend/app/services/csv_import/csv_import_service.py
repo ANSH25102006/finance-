@@ -1,3 +1,4 @@
+import logging
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 from uuid import UUID
@@ -8,15 +9,25 @@ from app.services.csv_import.csv_parser import CSVParser
 from app.services.csv_import.csv_mapper import CSVMapper
 from app.services.csv_import.import_schema import CSVPreviewResponse, NormalizedTransactionPreview, CSVImportSummaryResponse
 
+logger = logging.getLogger(__name__)
 
 class CSVImportService:
-    def preview_csv(self, filename: str, content_type: str, file_bytes: bytes, format_key: str) -> CSVPreviewResponse:
+    def preview_csv(self, filename: str, content_type: str, file_bytes: bytes, format_key: str, db: Session = None, user_id: UUID = None) -> CSVPreviewResponse:
         """Run validation, parsing, and mapping pipelines sequentially to generate transaction previews."""
         # 1. Metadata validations
         CSVValidator.validate_file_metadata(filename, content_type, len(file_bytes))
 
+        # Handle PDF and CSV parsing
+        if content_type == "application/pdf" or filename.lower().endswith(".pdf"):
+            from app.services.csv_import.pdf_parser import parse_pdf_to_csv_string
+            logger.info(f"Converting PDF {filename} to CSV for processing...")
+            csv_data = parse_pdf_to_csv_string(file_bytes, format_key)
+            actual_bytes = csv_data.encode('utf-8')
+        else:
+            actual_bytes = file_bytes
+
         # 2. Parse file rows
-        headers, parsed_rows = CSVParser.parse_csv_bytes(file_bytes, format_key)
+        headers, parsed_rows = CSVParser.parse_csv_bytes(actual_bytes, format_key)
 
         # 3. Check header column matches
         CSVValidator.validate_format_headers(headers, format_key)
@@ -34,7 +45,7 @@ class CSVImportService:
                 tx_preview = CSVMapper.map_row_to_preview(row, format_key)
                 
                 # Recognize merchant details using Merchant Intelligence
-                recognition = merchant_service.recognize(tx_preview.description)
+                recognition = merchant_service.recognize(tx_preview.description, db, user_id)
                 tx_preview.merchant = recognition["merchant"]
                 tx_preview.category = recognition["category"]
                 tx_preview.confidence = recognition["confidence"]
@@ -70,7 +81,7 @@ class CSVImportService:
     ) -> CSVImportSummaryResponse:
         """Parse statement, isolate duplicate entries, and bulk insert new records inside a database transaction."""
         # 1. Parse and validate the statement (re-parsing to avoid relying on client-side state)
-        preview = self.preview_csv(filename, content_type, file_bytes, format_key)
+        preview = self.preview_csv(filename, content_type, file_bytes, format_key, db=db, user_id=user_id)
         
         if not preview.transactions:
             return CSVImportSummaryResponse(

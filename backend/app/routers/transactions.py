@@ -94,6 +94,7 @@ def get_transactions(
     search: Optional[str] = None,
     min_amount: Optional[Decimal] = None,
     max_amount: Optional[Decimal] = None,
+    recurring: Optional[bool] = None,
     sort_by: str = Query("transaction_date"),
     sort_order: str = Query("desc"),
 ):
@@ -115,6 +116,8 @@ def get_transactions(
         query = query.filter(Transaction.amount >= min_amount)
     if max_amount is not None:
         query = query.filter(Transaction.amount <= max_amount)
+    if recurring is not None:
+        query = query.filter(Transaction.recurring.is_(recurring))
 
     if search:
         search_filter = f"%{search}%"

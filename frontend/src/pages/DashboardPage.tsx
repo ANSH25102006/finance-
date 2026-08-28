@@ -12,6 +12,10 @@ import { SpendingBreakdown } from "@/components/dashboard/SpendingBreakdown"
 import { RightSidebar } from "@/components/dashboard/RightSidebar"
 import { RecentTransactions } from "@/components/dashboard/RecentTransactions"
 import { BudgetProgress } from "@/components/dashboard/BudgetProgress"
+import { FinancialInsightsPanel } from "@/components/FinancialInsights"
+import { FinancialTimelinePanel } from "@/components/FinancialTimeline"
+import { PredictiveIntelligencePanel } from "@/components/PredictiveIntelligence"
+import { SavingsSimulatorPanel } from "@/components/SavingsSimulator"
 import { useDashboard } from "@/hooks/useDashboard"
 
 export default function DashboardPage() {
@@ -19,16 +23,39 @@ export default function DashboardPage() {
 
   if (isLoading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-[#060709] text-emerald-500">
-        <div className="text-sm uppercase tracking-widest font-mono">Loading System...</div>
+      <div className="flex h-screen items-center justify-center bg-[#060709] text-emerald-500 font-mono text-xs uppercase tracking-widest animate-pulse">
+        Loading System...
       </div>
     )
   }
 
   if (error || !summary) {
+    const isAuthError = (error as { response?: { status?: number } })?.response?.status === 401
+    if (isAuthError) {
+      window.location.href = '/login'
+      return null
+    }
+
     return (
-      <div className="flex h-screen items-center justify-center bg-[#060709] text-red-500">
-        <div className="text-sm uppercase tracking-widest font-mono">System Offline</div>
+      <div className="flex flex-col h-screen items-center justify-center bg-[#060709] text-red-500 font-mono gap-4 p-4 text-center">
+        <div className="text-sm uppercase tracking-widest font-semibold">System Offline or Connection Failed</div>
+        <p className="text-xs text-neutral-400 max-w-md">
+          Unable to fetch dashboard data. Please log in or verify the backend server is running.
+        </p>
+        <div className="flex gap-3 mt-2">
+          <a
+            href="/login"
+            className="px-4 py-2 text-xs uppercase tracking-wider bg-emerald-600 text-white rounded font-sans font-medium hover:bg-emerald-500 transition-colors"
+          >
+            Sign In
+          </a>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 text-xs uppercase tracking-wider bg-neutral-800 text-neutral-300 rounded font-sans font-medium hover:bg-neutral-700 transition-colors"
+          >
+            Retry
+          </button>
+        </div>
       </div>
     )
   }
@@ -86,6 +113,26 @@ export default function DashboardPage() {
             <div className="col-span-12 lg:col-span-4 flex">
               <BudgetProgress summary={summary} />
             </div>
+          </div>
+
+          {/* Row 5: Financial Intelligence Engine Insights */}
+          <div className="w-full">
+            <FinancialInsightsPanel />
+          </div>
+
+          {/* Row 6: Financial Timeline */}
+          <div className="w-full">
+            <FinancialTimelinePanel />
+          </div>
+
+          {/* Row 7: Predictive Intelligence */}
+          <div className="w-full">
+            <PredictiveIntelligencePanel />
+          </div>
+
+          {/* Row 8: Savings Simulator */}
+          <div className="w-full">
+            <SavingsSimulatorPanel />
           </div>
 
         </div>

@@ -14,38 +14,43 @@ class AnalyticsService:
         self.db = db
         self.user_id = user_id
 
+    def _get_reference_date(self) -> date:
+        """Get the latest transaction date for the user, fallback to today."""
+        latest = self.db.query(func.max(Transaction.transaction_date)).filter(Transaction.user_id == self.user_id).scalar()
+        return latest if latest else date.today()
+
     def get_dashboard_summary(self):
         """Aggregate current balance, total all-time income/expense, counts, averages, and extreme values."""
         balance = self.db.query(func.sum(Account.balance)).filter(Account.user_id == self.user_id).scalar()
-        
+
         total_income = self.db.query(func.sum(Transaction.amount)).filter(
             Transaction.user_id == self.user_id,
             Transaction.transaction_type == 'income'
         ).scalar()
-        
+
         total_expense = self.db.query(func.sum(Transaction.amount)).filter(
             Transaction.user_id == self.user_id,
             Transaction.transaction_type == 'expense'
         ).scalar()
-        
+
         income_val = float(total_income) if total_income is not None else 0.0
         expense_val = float(total_expense) if total_expense is not None else 0.0
-        
+
         count = self.db.query(func.count(Transaction.id)).filter(Transaction.user_id == self.user_id).scalar() or 0
         avg_value = self.db.query(func.avg(Transaction.amount)).filter(Transaction.user_id == self.user_id).scalar()
-        
+
         highest_expense = self.db.query(func.max(Transaction.amount)).filter(
             Transaction.user_id == self.user_id,
             Transaction.transaction_type == 'expense'
         ).scalar()
-        
+
         highest_income = self.db.query(func.max(Transaction.amount)).filter(
             Transaction.user_id == self.user_id,
             Transaction.transaction_type == 'income'
         ).scalar()
-        
+
         return {
-            "current_balance": float(balance) if balance is not None else 0.0,
+            "current_balance": (float(balance) if balance is not None else 0.0) + (income_val - expense_val),
             "total_income": income_val,
             "total_expenses": expense_val,
             "net_cash_flow": income_val - expense_val,
@@ -56,40 +61,49 @@ class AnalyticsService:
         }
 
     def get_monthly_trends(self, months_count=12):
-        """Aggregate last N months of income, expenses, and cash flow."""
-        trends = []
-        today = date.today()
+        """Aggregate last N months of income, expenses, and cash flow in exactly ONE query."""
+        today = self._get_reference_date()
         current_year = today.year
         current_month = today.month
-        
+
+        # Calculate boundaries
+        oldest_month = current_month - (months_count - 1)
+        oldest_year = current_year
+        while oldest_month <= 0:
+            oldest_month += 12
+            oldest_year -= 1
+
+        overall_start_date = date(oldest_year, oldest_month, 1)
+        _, current_last_day = calendar.monthrange(current_year, current_month)
+        overall_end_date = date(current_year, current_month, current_last_day)
+
+        # Fetch target data in one go
+        txs = self.db.query(
+            Transaction.transaction_date,
+            Transaction.amount,
+            Transaction.transaction_type
+        ).filter(
+            Transaction.user_id == self.user_id,
+            Transaction.transaction_date >= overall_start_date,
+            Transaction.transaction_date <= overall_end_date
+        ).all()
+
+        trends = []
         for i in range(months_count - 1, -1, -1):
             m = current_month - i
             y = current_year
             while m <= 0:
                 m += 12
                 y -= 1
-            
+
             _, last_day = calendar.monthrange(y, m)
             start_d = date(y, m, 1)
             end_d = date(y, m, last_day)
-            
-            inc = self.db.query(func.sum(Transaction.amount)).filter(
-                Transaction.user_id == self.user_id,
-                Transaction.transaction_type == 'income',
-                Transaction.transaction_date >= start_d,
-                Transaction.transaction_date <= end_d
-            ).scalar()
-            
-            exp = self.db.query(func.sum(Transaction.amount)).filter(
-                Transaction.user_id == self.user_id,
-                Transaction.transaction_type == 'expense',
-                Transaction.transaction_date >= start_d,
-                Transaction.transaction_date <= end_d
-            ).scalar()
-            
-            inc_val = float(inc) if inc is not None else 0.0
-            exp_val = float(exp) if exp is not None else 0.0
-            
+
+            # Filter and sum locally
+            inc_val = sum(float(tx.amount) for tx in txs if tx.transaction_type == 'income' and start_d <= tx.transaction_date <= end_d)
+            exp_val = sum(float(tx.amount) for tx in txs if tx.transaction_type == 'expense' and start_d <= tx.transaction_date <= end_d)
+
             trends.append({
                 "month": start_d.strftime("%b %Y"),
                 "income": inc_val,
@@ -104,9 +118,9 @@ class AnalyticsService:
             Transaction.user_id == self.user_id,
             Transaction.transaction_type == 'expense'
         ).scalar()
-        
+
         total_expenses_val = float(total_expenses) if total_expenses is not None else 0.0
-        
+
         rows = self.db.query(
             Category.name,
             func.sum(Transaction.amount).label("total"),
@@ -117,7 +131,7 @@ class AnalyticsService:
              Transaction.transaction_type == 'expense'
          ).group_by(Category.name) \
          .order_by(desc("total")).all()
-         
+
         result = []
         for name, total, count in rows:
             amount_val = float(total) if total is not None else 0.0
@@ -143,7 +157,7 @@ class AnalyticsService:
             Transaction.merchant != ""
         ).group_by(Transaction.merchant) \
          .order_by(desc("total")).limit(limit).all()
-         
+
         result = []
         for merchant, total, count in rows:
             result.append({
@@ -166,7 +180,7 @@ class AnalyticsService:
              Transaction.user_id == self.user_id,
              Transaction.transaction_type == 'expense'
          ).order_by(desc(Transaction.amount)).limit(limit).all()
-         
+
         result = []
         for merchant, amount, category_name, tx_date, descr in rows:
             result.append({
@@ -180,7 +194,7 @@ class AnalyticsService:
 
     def get_daily_spending(self, days=365):
         """Aggregate expense values grouped by transaction day."""
-        start_date = date.today() - timedelta(days=days)
+        start_date = self._get_reference_date() - timedelta(days=days)
         rows = self.db.query(
             Transaction.transaction_date,
             func.sum(Transaction.amount).label("total")
@@ -190,7 +204,7 @@ class AnalyticsService:
             Transaction.transaction_date >= start_date
         ).group_by(Transaction.transaction_date) \
          .order_by(Transaction.transaction_date.asc()).all()
-         
+
         result = []
         for tx_date, total in rows:
             result.append({
@@ -201,27 +215,27 @@ class AnalyticsService:
 
     def get_spending_trends(self):
         """Calculate averages and median values for spend trends analysis."""
-        today = date.today()
+        today = self._get_reference_date()
         thirty_days_ago = today - timedelta(days=30)
         one_year_ago = today - timedelta(days=365)
-        
+
         spend_30 = self.db.query(func.sum(Transaction.amount)).filter(
             Transaction.user_id == self.user_id,
             Transaction.transaction_type == 'expense',
             Transaction.transaction_date >= thirty_days_ago
         ).scalar()
-        
+
         spend_365 = self.db.query(func.sum(Transaction.amount)).filter(
             Transaction.user_id == self.user_id,
             Transaction.transaction_type == 'expense',
             Transaction.transaction_date >= one_year_ago
         ).scalar()
-        
+
         avg_tx_expense = self.db.query(func.avg(Transaction.amount)).filter(
             Transaction.user_id == self.user_id,
             Transaction.transaction_type == 'expense'
         ).scalar()
-        
+
         # Dialect agnostic median check
         if self.db.bind.dialect.name == 'sqlite':
             amounts = [float(r[0]) for r in self.db.query(Transaction.amount).filter(
@@ -244,7 +258,7 @@ class AnalyticsService:
                 Transaction.user_id == self.user_id,
                 Transaction.transaction_type == 'expense'
             ).scalar()
-            
+
         return {
             "average_daily_spend": float(spend_30) / 30.0 if spend_30 is not None else 0.0,
             "average_monthly_spend": float(spend_365) / 12.0 if spend_365 is not None else 0.0,
@@ -254,27 +268,27 @@ class AnalyticsService:
 
     def get_financial_health_score(self):
         """Compute user financial health score (0-100) using savings rate, ratios, and consistency logs."""
-        today = date.today()
+        today = self._get_reference_date()
         ninety_days_ago = today - timedelta(days=90)
-        
+
         income = self.db.query(func.sum(Transaction.amount)).filter(
             Transaction.user_id == self.user_id,
             Transaction.transaction_type == 'income',
             Transaction.transaction_date >= ninety_days_ago
         ).scalar()
-        
+
         expenses = self.db.query(func.sum(Transaction.amount)).filter(
             Transaction.user_id == self.user_id,
             Transaction.transaction_type == 'expense',
             Transaction.transaction_date >= ninety_days_ago
         ).scalar()
-        
+
         income_val = float(income) if income is not None else 0.0
         expenses_val = float(expenses) if expenses is not None else 0.0
-        
+
         savings_rate = ((income_val - expenses_val) / income_val * 100) if income_val > 0 else 0.0
         expense_ratio = (expenses_val / income_val * 100) if income_val > 0 else 0.0
-        
+
         # Savings Rate Score (Max 30)
         score_savings = 0
         if savings_rate >= 30:
@@ -283,7 +297,7 @@ class AnalyticsService:
             score_savings = 20
         elif savings_rate > 0:
             score_savings = 10
-            
+
         # Expense-to-Income Ratio Score (Max 30)
         score_ratio = 0
         if income_val > 0:
@@ -293,40 +307,40 @@ class AnalyticsService:
                 score_ratio = 20
             elif expense_ratio < 90:
                 score_ratio = 10
-                
+
         # Income consistency in last 90 days (Max 20)
         # Fallback to query distinct months
         if self.db.bind.dialect.name == 'postgresql':
             month_expr = func.extract('month', Transaction.transaction_date)
         else:
             month_expr = func.strftime('%m', Transaction.transaction_date)
-            
+
         income_months = self.db.query(func.count(func.distinct(month_expr))).filter(
             Transaction.user_id == self.user_id,
             Transaction.transaction_type == 'income',
             Transaction.transaction_date >= ninety_days_ago
         ).scalar() or 0
-        
+
         score_consistency = 10
         if income_months >= 3:
             score_consistency = 20
         elif income_months >= 2:
             score_consistency = 15
-            
+
         # Spending transactions consistency (Max 20)
         tx_count = self.db.query(func.count(Transaction.id)).filter(
             Transaction.user_id == self.user_id,
             Transaction.transaction_date >= ninety_days_ago
         ).scalar() or 0
-        
+
         score_spending = 10
         if tx_count >= 15:
             score_spending = 20
         elif tx_count >= 5:
             score_spending = 15
-            
+
         total_score = score_savings + score_ratio + score_consistency + score_spending
-        
+
         if total_score >= 80:
             rating = "Excellent"
         elif total_score >= 60:
@@ -335,7 +349,7 @@ class AnalyticsService:
             rating = "Fair"
         else:
             rating = "Needs Improvement"
-            
+
         explanations = []
         if income_val == 0:
             explanations.append("No recent income detected. Record monthly income to compute complete savings health.")
@@ -345,15 +359,15 @@ class AnalyticsService:
                 explanations.append("Your savings rate is lower than the recommended 15%. Try tracking category budgets.")
             else:
                 explanations.append("Healthy savings buffer. You are keeping a nice portion of your income.")
-                
+
         if expense_ratio > 80:
             explanations.append("High expense-to-income ratio. We recommend checking your top merchant details.")
         elif income_val > 0:
             explanations.append("Your spending is well within standard budget targets.")
-            
+
         if tx_count < 5:
             explanations.append("Low logging volume. Log more transactions to ensure a more accurate representation of your financial health.")
-            
+
         return {
             "score": total_score,
             "rating": rating,

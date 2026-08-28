@@ -15,8 +15,13 @@ from app.services.auth_service import create_user, authenticate_user
 from app.core.security import create_access_token
 from app.dependencies.auth import get_current_user
 from app.models.user import User
+from app.dependencies.rate_limit import RateLimiter
 
 router = APIRouter()
+
+login_limiter = RateLimiter(30, 60)
+signup_limiter = RateLimiter(30, 60)
+
 
 
 @router.post(
@@ -24,6 +29,7 @@ router = APIRouter()
     response_model=UserResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Register a new user account",
+    dependencies=[Depends(signup_limiter)],
 )
 def signup(user_in: UserCreate, db: Session = Depends(get_db)):
     """Create a new user account.
@@ -40,6 +46,7 @@ def signup(user_in: UserCreate, db: Session = Depends(get_db)):
     "/login",
     response_model=Token,
     summary="Authenticate and receive a JWT access token",
+    dependencies=[Depends(login_limiter)],
 )
 def login(credentials: UserLogin, db: Session = Depends(get_db)):
     """Login with email and password.

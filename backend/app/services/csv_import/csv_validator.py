@@ -12,11 +12,34 @@ class CSVValidator:
             raise HTTPException(status_code=400, detail="File size exceeds maximum limit of 5MB.")
 
         # Validate extension
-        if not filename.lower().endswith(".csv"):
-            raise HTTPException(status_code=400, detail="Invalid file type. Only CSV files (.csv) are supported.")
+        ext = filename.lower()
+        if not (ext.endswith(".csv") or ext.endswith(".pdf")):
+            raise HTTPException(status_code=400, detail="Invalid file type. Only CSV (.csv) or PDF (.pdf) files are supported.")
+
+        # Validate MIME type
+        valid_mime_types = {
+            "text/csv",
+            "application/vnd.ms-excel",
+            "text/plain",
+            "text/x-csv",
+            "application/csv",
+            "application/x-csv",
+            "text/comma-separated-values",
+            "application/pdf",
+            "application/x-pdf",
+            "application/acrobat",
+            "applications/vnd.pdf",
+            "text/pdf",
+            "text/x-pdf"
+        }
+        if content_type and content_type.lower() not in valid_mime_types and not (ext.endswith(".csv") or ext.endswith(".pdf")):
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid file content-type '{content_type}'. Only CSV or PDF files are supported."
+            )
 
         if file_size == 0:
-            raise HTTPException(status_code=400, detail="The uploaded CSV file is empty.")
+            raise HTTPException(status_code=400, detail="The uploaded statement file is empty.")
 
     @staticmethod
     def validate_format_headers(headers: List[str], format_key: str):

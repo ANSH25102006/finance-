@@ -1,3 +1,4 @@
+import uuid
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
@@ -35,8 +36,13 @@ def get_current_user(
     if payload is None:
         raise credentials_exception
 
-    user_id: str | None = payload.get("sub")
-    if user_id is None:
+    user_id_raw = payload.get("sub")
+    if not user_id_raw:
+        raise credentials_exception
+
+    try:
+        user_id = uuid.UUID(str(user_id_raw)) if not isinstance(user_id_raw, uuid.UUID) else user_id_raw
+    except (ValueError, TypeError):
         raise credentials_exception
 
     user = db.query(User).filter(User.id == user_id).first()

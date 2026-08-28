@@ -19,6 +19,19 @@ def create_budget(
     current_user: User = Depends(get_current_user),
 ):
     """Create a new budget."""
+    # Verify category ownership to prevent IDOR vulnerabilities
+    from app.models.category import Category
+    from sqlalchemy import or_
+    category = db.query(Category).filter(
+        Category.id == budget_in.category_id,
+        or_(Category.user_id == current_user.id, Category.user_id.is_(None))
+    ).first()
+    if not category:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Category not found or access denied."
+        )
+
     existing = db.query(Budget).filter(
         Budget.category_id == budget_in.category_id,
         Budget.month == budget_in.month,
@@ -52,6 +65,17 @@ def get_budgets(
     return query.all()
 
 
+@router.get("/recommendations")
+def get_budget_recommendations(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Retrieve rolling historical category average budget recommendations and savings trim targets."""
+    from app.services.budget_recommendation_service import BudgetRecommendationService
+    service = BudgetRecommendationService(db, current_user.id)
+    return service.get_recommendations()
+
+
 @router.put("/{budget_id}", response_model=BudgetResponse)
 def update_budget(
     budget_id: UUID,
@@ -63,6 +87,20 @@ def update_budget(
     budget = db.query(Budget).filter(Budget.id == budget_id, Budget.user_id == current_user.id).first()
     if not budget:
         raise HTTPException(status_code=404, detail="Budget not found")
+
+    # Verify category ownership to prevent IDOR vulnerabilities if category_id is updated
+    if budget_in.category_id is not None:
+        from app.models.category import Category
+        from sqlalchemy import or_
+        category = db.query(Category).filter(
+            Category.id == budget_in.category_id,
+            or_(Category.user_id == current_user.id, Category.user_id.is_(None))
+        ).first()
+        if not category:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Category not found or access denied."
+            )
 
     update_data = budget_in.model_dump(exclude_unset=True)
     for key, value in update_data.items():

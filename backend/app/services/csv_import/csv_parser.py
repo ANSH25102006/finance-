@@ -74,10 +74,26 @@ class CSVParser:
                     # Clean trailing characters or carriage returns
                     key = k.strip().replace('"', '').replace("'", "")
                     val = v.strip() if v is not None else ""
+
+                    # Prevent CSV Formula Injection (=, +, -, @) on text fields
+                    # Avoid prepending to negative numbers or decimal values
+                    if val.startswith(('=', '+', '-', '@')) and not _is_number(val):
+                        val = "'" + val
+
                     cleaned_row[key] = val
-            
+
             # Skip empty lines or divider bars
             if any(cleaned_row.values()) and not all(val.startswith("---") for val in cleaned_row.values()):
                 parsed_rows.append(cleaned_row)
 
         return headers, parsed_rows
+
+
+def _is_number(val: str) -> bool:
+    """Helper to detect if a text cell represents a decimal number."""
+    try:
+        cleaned = val.replace('$', '').replace('€', '').replace('£', '').replace(',', '').strip()
+        float(cleaned)
+        return True
+    except ValueError:
+        return False

@@ -37,6 +37,19 @@ def create_user(db: Session, user_in: UserCreate) -> User:
         password_hash=hash_password(user_in.password),
     )
     db.add(new_user)
+    db.flush()
+
+    # Create default account for new user to avoid empty destination account state
+    from app.models.account import Account
+    default_account = Account(
+        user_id=new_user.id,
+        name="Primary Checking",
+        balance=0.0,
+        currency="INR",
+        color="#3b82f6",
+        icon="Building2"
+    )
+    db.add(default_account)
     db.commit()
     db.refresh(new_user)
     return new_user

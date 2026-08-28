@@ -5,10 +5,19 @@
 
 import axios from 'axios'
 
-const baseURL = import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:8000'
+const getBaseUrl = () => {
+  const envUrl = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL
+  if (envUrl) {
+    return envUrl
+  }
+  // Dev fallback: connect to local API server
+  const hostname = typeof window !== 'undefined' ? window.location.hostname : '127.0.0.1'
+  const finalHost = hostname === 'localhost' ? '127.0.0.1' : hostname
+  return `http://${finalHost}:8000`
+}
 
 export const apiClient = axios.create({
-  baseURL,
+  baseURL: getBaseUrl(),
   headers: { 'Content-Type': 'application/json' },
   timeout: 15_000,
 })

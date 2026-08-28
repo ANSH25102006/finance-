@@ -16,16 +16,16 @@ class DashboardService:
         self.db = db
         self.user_id = user_id
         self.analytics = AnalyticsService(db, user_id)
-        
-        now = datetime.now()
+
+        now = self.analytics._get_reference_date()
         self.current_month = now.month
         self.current_year = now.year
-        
+
         # Calculate start and end of current month
         _, last_day = calendar.monthrange(self.current_year, self.current_month)
         self.start_date = datetime(self.current_year, self.current_month, 1).date()
         self.end_date = datetime(self.current_year, self.current_month, last_day).date()
-        
+
         # Last month calculations
         if self.current_month == 1:
             self.last_month = 12
@@ -33,23 +33,23 @@ class DashboardService:
         else:
             self.last_month = self.current_month - 1
             self.last_year = self.current_year
-            
+
         _, last_day_prev = calendar.monthrange(self.last_year, self.last_month)
         self.start_date_prev = datetime(self.last_year, self.last_month, 1).date()
         self.end_date_prev = datetime(self.last_year, self.last_month, last_day_prev).date()
 
     def get_summary(self):
         """Aggregate all dashboard data into a single payload."""
-        
+
         income_current = self.calculate_income(self.start_date, self.end_date)
         income_prev = self.calculate_income(self.start_date_prev, self.end_date_prev)
-        
+
         expense_current = self.calculate_expenses(self.start_date, self.end_date)
         expense_prev = self.calculate_expenses(self.start_date_prev, self.end_date_prev)
-        
+
         cash_flow_current = income_current - expense_current
         savings_rate_current = (cash_flow_current / income_current * 100) if income_current > 0 else 0
-        
+
         return {
             "netWorth": self.calculate_net_worth(),
             "income": {
@@ -102,26 +102,33 @@ class DashboardService:
         return self.analytics.get_financial_health_score()["score"]
 
     def calculate_budget_utilization(self):
-        budgets = self.db.query(Budget).filter(
+        from sqlalchemy.orm import joinedload
+        budgets = self.db.query(Budget).options(joinedload(Budget.category)).filter(
             Budget.user_id == self.user_id,
             Budget.month == self.current_month,
             Budget.year == self.current_year
         ).all()
-        
-        result = []
-        for b in budgets:
-            category = self.db.query(Category).filter(Category.id == b.category_id).first()
-            spent_val = self.db.query(func.sum(Transaction.amount)).filter(
+
+        # Aggregate expense sums grouped by category for the current month in ONE query
+        spent_by_category = {
+            cat_id: float(total) for cat_id, total in
+            self.db.query(
+                Transaction.category_id,
+                func.sum(Transaction.amount)
+            ).filter(
                 Transaction.user_id == self.user_id,
-                Transaction.category_id == b.category_id,
                 Transaction.transaction_type == 'expense',
                 Transaction.transaction_date >= self.start_date,
                 Transaction.transaction_date <= self.end_date
-            ).scalar()
-            spent = float(spent_val) if spent_val is not None else 0.0
-            
+            ).group_by(Transaction.category_id).all()
+        }
+
+        result = []
+        for b in budgets:
+            category = b.category
+            spent = spent_by_category.get(b.category_id, 0.0)
             percent = (spent / b.amount * 100) if b.amount > 0 else 0
-            
+
             result.append({
                 "id": str(b.id),
                 "title": category.name if category else "Unknown",
@@ -152,10 +159,14 @@ class DashboardService:
         return result
 
     def get_recent_activity(self, limit=5):
-        txs = self.db.query(Transaction).filter(Transaction.user_id == self.user_id).order_by(Transaction.transaction_date.desc(), Transaction.created_at.desc()).limit(limit).all()
+        from sqlalchemy.orm import joinedload
+        txs = self.db.query(Transaction).options(joinedload(Transaction.category)).filter(
+            Transaction.user_id == self.user_id
+        ).order_by(Transaction.transaction_date.desc(), Transaction.created_at.desc()).limit(limit).all()
+
         result = []
         for tx in txs:
-            cat = self.db.query(Category).filter(Category.id == tx.category_id).first()
+            cat = tx.category
             result.append({
                 "id": str(tx.id),
                 "merchant": tx.merchant or tx.description,
@@ -170,32 +181,32 @@ class DashboardService:
         return result
 
     def calculate_category_breakdown(self):
-        # Top 5 expense categories for current month
+        # Join Category and Transaction to retrieve aggregated fields in ONE database query
         rows = self.db.query(
-            Transaction.category_id, 
+            Category.name,
+            Category.color,
             func.sum(Transaction.amount).label('total')
+        ).join(
+            Category, Transaction.category_id == Category.id
         ).filter(
             Transaction.user_id == self.user_id,
             Transaction.transaction_type == 'expense',
             Transaction.transaction_date >= self.start_date,
             Transaction.transaction_date <= self.end_date
-        ).group_by(Transaction.category_id).order_by(func.sum(Transaction.amount).desc()).limit(5).all()
-        
+        ).group_by(Category.name, Category.color).order_by(func.sum(Transaction.amount).desc()).limit(5).all()
+
         total_expenses = self.calculate_expenses(self.start_date, self.end_date)
         result = []
-        
-        for row in rows:
-            cat_id, amt = row
+
+        for name, color, amt in rows:
             amt_float = float(amt) if amt is not None else 0.0
-            cat = self.db.query(Category).filter(Category.id == cat_id).first()
-            if cat:
-                percent = (amt_float / total_expenses * 100) if total_expenses > 0 else 0
-                result.append({
-                    "name": cat.name,
-                    "value": round(percent, 1),
-                    "amount": amt_float,
-                    "color": cat.color or "#ffffff"
-                })
+            percent = (amt_float / total_expenses * 100) if total_expenses > 0 else 0.0
+            result.append({
+                "name": name,
+                "value": round(percent, 1),
+                "amount": amt_float,
+                "color": color or "#ffffff"
+            })
         return result
 
     def get_monthly_trend(self):

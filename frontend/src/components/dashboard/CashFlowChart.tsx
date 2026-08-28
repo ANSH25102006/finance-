@@ -6,6 +6,13 @@ interface CashFlowChartProps {
   summary: DashboardSummary
 }
 
+const formatAxisCurrency = (value: number) => {
+  if (value >= 10000000) return `₹${(value / 10000000).toFixed(1)}Cr`
+  if (value >= 100000) return `₹${(value / 100000).toFixed(1)}L`
+  if (value >= 1000) return `₹${(value / 1000).toFixed(value % 1000 === 0 ? 0 : 1)}k`
+  return `₹${value}`
+}
+
 export function CashFlowChart({ summary }: CashFlowChartProps) {
   // Map our backend monthlyTrend format to the chart's expected format
   const data = summary.monthlyTrend.map((t) => ({
@@ -56,7 +63,7 @@ export function CashFlowChart({ summary }: CashFlowChartProps) {
               axisLine={false} 
               tickLine={false} 
               tick={{ fontSize: 10, fill: '#6b7280', fontWeight: 500 }}
-              tickFormatter={(value) => `₹${value / 1000}k`}
+              tickFormatter={formatAxisCurrency}
               dx={-10}
             />
             <Tooltip
