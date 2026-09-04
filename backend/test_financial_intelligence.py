@@ -108,15 +108,17 @@ def make_ctx(
     return ctx
 
 
-def expense(amount, cat_name="Food", days_ago=0, merchant=None, recurring=False):
+def expense(amount, cat_name="Food", days_ago=0, merchant=None, recurring=False, ref_date=None):
     cat = FakeCategory(name=cat_name)
-    d = date.today() - timedelta(days=days_ago)
+    ref = ref_date or date.today()
+    d = ref - timedelta(days=days_ago)
     return FakeTx(amount=amount, transaction_type="expense", merchant=merchant,
                   transaction_date=d, category=cat, category_id=cat.id, recurring=recurring)
 
 
-def income(amount, days_ago=0, merchant=None):
-    d = date.today() - timedelta(days=days_ago)
+def income(amount, days_ago=0, merchant=None, ref_date=None):
+    ref = ref_date or date.today()
+    d = ref - timedelta(days=days_ago)
     return FakeTx(amount=amount, transaction_type="income",
                   transaction_date=d, category=None, merchant=merchant or "Employer")
 
@@ -612,10 +614,10 @@ class TestSavingsOpportunityDetector:
         assert any("Subscription" in r.category or "Netflix" in r.summary for r in results)
 
     def test_high_frequency_purchase(self):
-        today = date.today()
+        today = date(date.today().year, date.today().month, 20)
         # 10 coffee shop visits this month
-        txs = [expense(200, "Food", days_ago=i, merchant="Starbucks") for i in range(10)]
-        ctx = make_ctx(transactions=txs)
+        txs = [expense(200, "Food", days_ago=i, merchant="Starbucks", ref_date=today) for i in range(10)]
+        ctx = make_ctx(transactions=txs, today=today)
         results = self._detector().detect(ctx)
         assert any("Starbucks" in r.summary for r in results)
 
@@ -739,7 +741,7 @@ class TestCashflowWarningDetector:
         today = date(date.today().year, date.today().month, 15)
         txs = (
             [month_income(30_000, today.year, today.month)] +
-            [expense(2500, days_ago=i) for i in range(14)]  # 2500/day * 30 = 75k projected
+            [expense(2500, days_ago=i, ref_date=today) for i in range(14)]  # 2500/day * 30 = 75k projected
         )
         ctx = make_ctx(transactions=txs, today=today)
         results = self._detector().detect(ctx)
