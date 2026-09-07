@@ -119,9 +119,13 @@ default_origins = [
     "http://127.0.0.1:8000",
 ]
 
-configured_origins = [
-    origin.strip() for origin in settings.cors_origins.split(",") if origin.strip()
-]
+configured_origins = []
+for origin in settings.cors_origins.split(","):
+    clean_origin = origin.strip().rstrip("/")
+    if clean_origin:
+        configured_origins.append(clean_origin)
+        configured_origins.append(f"{clean_origin}/")
+
 allowed_origins = list(set(default_origins + configured_origins))
 
 app.add_middleware(

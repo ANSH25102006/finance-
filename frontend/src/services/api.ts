@@ -8,7 +8,7 @@ import axios from 'axios'
 const getBaseUrl = () => {
   const envUrl = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL
   if (envUrl) {
-    return envUrl
+    return envUrl.trim().replace(/\/+$/, '')
   }
   // Dev fallback: connect to local API server
   const hostname = typeof window !== 'undefined' ? window.location.hostname : '127.0.0.1'
