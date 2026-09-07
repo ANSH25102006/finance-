@@ -108,6 +108,7 @@ app.add_middleware(GZipMiddleware, minimum_size=1000)
 # Tighten allowed origins in production.
 # ---------------------------------------------------------------------------
 default_origins = [
+    "https://finance-01-navy.vercel.app",
     "http://localhost:5173",
     "http://127.0.0.1:5173",
     "http://localhost:5174",
@@ -131,7 +132,7 @@ allowed_origins = list(set(default_origins + configured_origins))
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
-    allow_origin_regex=r"http://(localhost|127\.0\.0\.1)(:[0-9]+)?",
+    allow_origin_regex=r"https://finance-01-[a-zA-Z0-9-]+\.vercel\.app|http://(localhost|127\.0\.0\.1)(:[0-9]+)?",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
